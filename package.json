@@ -1,0 +1,38 @@
+{
+  "name": "advanced-ai-system",
+  "version": "1.0.0",
+  "description": "Advanced AI and simulation systems",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && http-server",
+    "test:integration": "ts-node -r tsconfig-paths/register src/tests/integration/AISystemTest.ts",
+    "test:environment": "ts-node -r tsconfig-paths/register src/tests/integration/EnvironmentTest.ts",
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "lint": "eslint 'src/**/*.{js,ts}'",
+    "lint:fix": "eslint 'src/**/*.{js,ts}' --fix",
+    "format": "prettier --write 'src/**/*.{js,ts}'",
+    "format:check": "prettier --check 'src/**/*.{js,ts}'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@dimforge/rapier3d": "^0.11.2",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@types/three": "^0.160.0",
+    "rxjs": "^7.8.1",
+    "three": "^0.160.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.4",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^8.10.0",
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.3"
+  }
+}

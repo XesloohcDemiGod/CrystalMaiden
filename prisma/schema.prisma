@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Book {
+  id        String    @id @default(cuid())
+  title     String
+  subject   String
+  grade     Int
+  pdfUrl    String
+  chapters  Chapter[]
+  createdAt DateTime  @default(now())
+}
+
+model Chapter {
+  id        String    @id @default(cuid())
+  title     String
+  bookId    String
+  book      Book      @relation(fields: [bookId], references: [id])
+  sections  Section[]
+  order     Int
+}
+
+model Section {
+  id        String         @id @default(cuid())
+  title     String
+  chapterId String
+  chapter   Chapter        @relation(fields: [chapterId], references: [id])
+  content   ContentBlock[]
+  order     Int
+}
+
+model ContentBlock {
+  id        String  @id @default(cuid())
+  type      String
+  content   String
+  sectionId String
+  section   Section @relation(fields: [sectionId], references: [id])
+  order     Int
+} 
