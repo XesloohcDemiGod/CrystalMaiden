@@ -295,3 +295,95 @@ export interface SwarmAgent {
   neighbors: Set<string>;
   attributes: Map<string, number>;
 }
+
+// Comic Style Explanation Types
+export enum PanelLayout {
+  SINGLE = 'single',
+  TWO_COLUMN = 'two_column',
+  THREE_COLUMN = 'three_column',
+  GRID = 'grid',
+}
+
+export enum SpeechBubbleType {
+  THOUGHT = 'thought',
+  SPEECH = 'speech',
+  NARRATION = 'narration',
+  EXCLAMATION = 'exclamation',
+}
+
+export interface IComicCharacter {
+  id: string;
+  name: string;
+  role: 'student' | 'teacher' | 'explainer' | 'concept' | 'helper';
+  appearance: {
+    color: string;
+    emoji?: string;
+    style: 'simple' | 'detailed';
+  };
+  personality?: string[];
+}
+
+export interface ISpeechBubble {
+  id: string;
+  type: SpeechBubbleType;
+  text: string;
+  position: Vector2D;
+  characterId?: string;
+  arrow?: {
+    direction: 'left' | 'right' | 'up' | 'down';
+    target: Vector2D;
+  };
+}
+
+export interface IPanelElement {
+  type: 'character' | 'object' | 'diagram' | 'formula' | 'arrow' | 'label';
+  id: string;
+  position: Vector2D;
+  size: Vector2D;
+  content: string | any;
+  style?: Record<string, any>;
+}
+
+export interface IComicPanel {
+  id: string;
+  order: number;
+  layout: PanelLayout;
+  elements: IPanelElement[];
+  speechBubbles: ISpeechBubble[];
+  background?: {
+    color: string;
+    pattern?: string;
+  };
+  title?: string;
+}
+
+export interface IComicExplanation {
+  id: string;
+  topic: string;
+  concept: string;
+  explanation: string;
+  panels: IComicPanel[];
+  characters: IComicCharacter[];
+  style: {
+    theme: 'light' | 'dark' | 'colorful';
+    font: string;
+    panelSpacing: number;
+  };
+  metadata: {
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    subject: string;
+    estimatedTime: number;
+    tags: string[];
+  };
+}
+
+export interface IComicGenerationOptions {
+  topic: string;
+  concept: string;
+  explanation: string;
+  difficulty?: 'beginner' | 'intermediate' | 'advanced';
+  subject?: string;
+  characterCount?: number;
+  panelCount?: number;
+  style?: 'simple' | 'detailed';
+}
