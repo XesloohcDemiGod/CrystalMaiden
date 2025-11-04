@@ -8,34 +8,41 @@
   } from '$lib/types';
   import { ComicGenerator } from '$lib/education/ComicGenerator';
   import { PanelLayout as PanelLayoutEnum, SpeechBubbleType as SpeechBubbleTypeEnum } from '$lib/types';
+  import type { ILLMConfig } from '$lib/education/LLMService';
 
   export let comic: IComicExplanation | null = null;
   export let topic: string = '';
   export let concept: string = '';
   export let explanation: string = '';
   export let autoGenerate: boolean = true;
+  export let llmConfig: ILLMConfig | null = null;
 
   let currentPanelIndex = 0;
   let generator: ComicGenerator;
 
+  let isLoading = false;
+  let error: string | null = null;
+
   onMount(() => {
     generator = new ComicGenerator();
     
+    // Configure LLM if provided
+    if (llmConfig) {
+      generator.configureLLM(llmConfig);
+    }
+    
     if (autoGenerate && !comic && topic && concept && explanation) {
-      comic = generator.generateComicExplanation({
-        topic,
-        concept,
-        explanation,
-        difficulty: 'beginner',
-        panelCount: 4,
-        characterCount: 2,
-      });
+      generateComic();
     }
   });
 
-  function regenerate() {
-    if (generator && topic && concept && explanation) {
-      comic = generator.generateComicExplanation({
+  async function generateComic() {
+    if (!generator || !topic || !concept || !explanation) return;
+    
+    isLoading = true;
+    error = null;
+    try {
+      comic = await generator.generateComicExplanation({
         topic,
         concept,
         explanation,
@@ -44,7 +51,16 @@
         characterCount: 2,
       });
       currentPanelIndex = 0;
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to generate comic';
+      console.error('Error generating comic:', err);
+    } finally {
+      isLoading = false;
     }
+  }
+
+  async function regenerate() {
+    await generateComic();
   }
 
   function nextPanel() {
@@ -87,7 +103,17 @@
 </script>
 
 <div class="comic-explanation">
-  {#if comic}
+  {#if isLoading}
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Generating comic script with AI...</p>
+    </div>
+  {:else if error}
+    <div class="error-state">
+      <p class="error-message">Error: {error}</p>
+      <button class="action-button" on:click={regenerate}>Try Again</button>
+    </div>
+  {:else if comic}
     <div class="comic-header">
       <h2 class="comic-title">{comic.topic}</h2>
       <p class="comic-concept">{comic.concept}</p>
@@ -437,6 +463,37 @@
     text-align: center;
     padding: 60px 20px;
     color: #999;
+  }
+
+  .loading-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4A90E2;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .error-state {
+    text-align: center;
+    padding: 60px 20px;
+  }
+
+  .error-message {
+    color: #d32f2f;
+    margin-bottom: 20px;
+    font-weight: bold;
   }
 
   /* Layout variants */

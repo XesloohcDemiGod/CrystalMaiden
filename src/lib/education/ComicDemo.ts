@@ -9,10 +9,10 @@ import { ComicGenerator } from './ComicGenerator';
 import type { IComicExplanation, IComicGenerationOptions } from '../types/index';
 
 // Example 1: Simple concept explanation
-export function generatePhotosynthesisComic(): IComicExplanation {
+export async function generatePhotosynthesisComic(): Promise<IComicExplanation> {
   const generator = new ComicGenerator();
   
-  return generator.generateComicExplanation({
+  return await generator.generateComicExplanation({
     topic: 'Biology',
     concept: 'Photosynthesis',
     explanation: 'Photosynthesis is how plants make food. They use sunlight, water, and carbon dioxide to create glucose and oxygen. This process happens in the leaves, specifically in structures called chloroplasts. The glucose gives the plant energy to grow, while oxygen is released into the air for us to breathe.',
@@ -25,10 +25,10 @@ export function generatePhotosynthesisComic(): IComicExplanation {
 }
 
 // Example 2: Math concept explanation
-export function generateFractionsComic(): IComicExplanation {
+export async function generateFractionsComic(): Promise<IComicExplanation> {
   const generator = new ComicGenerator();
   
-  return generator.generateComicExplanation({
+  return await generator.generateComicExplanation({
     topic: 'Mathematics',
     concept: 'Fractions',
     explanation: 'A fraction represents parts of a whole. The top number is the numerator, showing how many parts we have. The bottom number is the denominator, showing how many parts make up the whole. For example, 3/4 means we have 3 out of 4 equal parts. Fractions help us describe quantities that are not whole numbers.',
@@ -41,10 +41,10 @@ export function generateFractionsComic(): IComicExplanation {
 }
 
 // Example 3: Physics concept explanation
-export function generateGravityComic(): IComicExplanation {
+export async function generateGravityComic(): Promise<IComicExplanation> {
   const generator = new ComicGenerator();
   
-  return generator.generateComicExplanation({
+  return await generator.generateComicExplanation({
     topic: 'Physics',
     concept: 'Gravity',
     explanation: 'Gravity is the force that pulls objects toward each other. Earth\'s gravity pulls everything toward its center, which is why things fall down and why we stay on the ground. The larger an object is, the stronger its gravitational pull. This is why Earth pulls us down, but we don\'t pull Earth up - Earth is much more massive than we are.',
@@ -57,9 +57,9 @@ export function generateGravityComic(): IComicExplanation {
 }
 
 // Example 4: Quick explanation generator
-export function generateQuickComic(concept: string, explanation: string): IComicExplanation {
+export async function generateQuickComic(concept: string, explanation: string): Promise<IComicExplanation> {
   const generator = new ComicGenerator();
-  return generator.generateQuickExplanation(concept, explanation);
+  return await generator.generateQuickExplanation(concept, explanation);
 }
 
 // Example usage in a component or page
@@ -81,12 +81,16 @@ export const exampleConcepts = [
 /**
  * Generate comic explanations for multiple concepts
  */
-export function generateMultipleComics(): IComicExplanation[] {
+export async function generateMultipleComics(): Promise<IComicExplanation[]> {
   const generator = new ComicGenerator();
   
-  return exampleConcepts.map(({ concept, explanation }) =>
-    generator.generateQuickExplanation(concept, explanation)
+  const results = await Promise.all(
+    exampleConcepts.map(({ concept, explanation }) =>
+      generator.generateQuickExplanation(concept, explanation)
+    )
   );
+  
+  return results;
 }
 
 /**
@@ -101,10 +105,10 @@ export interface IEducationalContent {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
-export function convertToComic(content: IEducationalContent): IComicExplanation {
+export async function convertToComic(content: IEducationalContent): Promise<IComicExplanation> {
   const generator = new ComicGenerator();
   
-  return generator.generateComicExplanation({
+  return await generator.generateComicExplanation({
     topic: content.title,
     concept: content.concept,
     explanation: content.explanation,

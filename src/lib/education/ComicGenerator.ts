@@ -16,8 +16,18 @@ import type {
   IComicGenerationOptions,
   Vector2D,
 } from '../types/index';
+import {
+  LLMService,
+  type ILLMConfig,
+  type IComicScript,
+  type IComicScriptPanel,
+  type IComicScriptDialogue,
+} from './LLMService';
 
 export class ComicGenerator {
+  private useLLM: boolean = false;
+  private llmService: LLMService | null = null;
+
   private defaultCharacters: IComicCharacter[] = [
     {
       id: 'student',
@@ -55,12 +65,30 @@ export class ComicGenerator {
   ];
 
   /**
+   * Configures LLM service for comic script generation
+   * 
+   * @param config - LLM configuration
+   */
+  public configureLLM(config: ILLMConfig): void {
+    this.llmService = new LLMService(config);
+    this.useLLM = true;
+  }
+
+  /**
+   * Disables LLM and uses rule-based generation
+   */
+  public disableLLM(): void {
+    this.useLLM = false;
+    this.llmService = null;
+  }
+
+  /**
    * Generates a comic-style explanation from educational content
    * 
    * @param options - Generation options including topic, concept, and explanation
    * @returns A complete comic explanation with panels and characters
    */
-  public generateComicExplanation(options: IComicGenerationOptions): IComicExplanation {
+  public async generateComicExplanation(options: IComicGenerationOptions): Promise<IComicExplanation> {
     const {
       topic,
       concept,
@@ -72,13 +100,19 @@ export class ComicGenerator {
       style = 'simple',
     } = options;
 
-    // Break down explanation into digestible parts
+    // Use LLM if configured, otherwise use rule-based generation
+    if (this.useLLM && this.llmService) {
+      try {
+        return await this.generateWithLLM(options);
+      } catch (error) {
+        console.warn('LLM generation failed, falling back to rule-based:', error);
+        // Fall through to rule-based generation
+      }
+    }
+
+    // Rule-based generation (original implementation)
     const explanationParts = this.breakDownExplanation(explanation, panelCount);
-
-    // Select characters based on count
     const characters = this.selectCharacters(characterCount);
-
-    // Generate panels
     const panels = this.generatePanels(
       explanationParts,
       characters,
@@ -106,6 +140,215 @@ export class ComicGenerator {
         tags: this.extractTags(topic, concept),
       },
     };
+  }
+
+  /**
+   * Generates comic explanation using LLM
+   */
+  private async generateWithLLM(options: IComicGenerationOptions): Promise<IComicExplanation> {
+    if (!this.llmService) {
+      throw new Error('LLM service not configured');
+    }
+
+    const {
+      topic,
+      concept,
+      explanation,
+      difficulty = 'beginner',
+      subject = 'general',
+      panelCount = 4,
+    } = options;
+
+    // Generate script using LLM
+    const script = await this.llmService.generateComicScript(options);
+
+    // Convert LLM script to comic panels
+    const panels = this.convertScriptToPanels(script, panelCount);
+    const characters = this.convertScriptToCharacters(script);
+
+    return {
+      id: this.generateId(),
+      topic,
+      concept,
+      explanation,
+      panels,
+      characters,
+      style: {
+        theme: script.style.theme as 'light' | 'dark' | 'colorful' || this.selectTheme(difficulty),
+        font: 'Comic Sans MS, sans-serif',
+        panelSpacing: 20,
+      },
+      metadata: {
+        difficulty,
+        subject,
+        estimatedTime: panelCount * 30,
+        tags: this.extractTags(topic, concept),
+      },
+    };
+  }
+
+  /**
+   * Converts LLM script panels to comic panels
+   */
+  private convertScriptToPanels(script: IComicScript, panelCount: number): IComicPanel[] {
+    const panels: IComicPanel[] = [];
+
+    script.panels.forEach((scriptPanel: IComicScriptPanel, index: number) => {
+      // Determine layout
+      let layout: PanelLayout = PanelLayout.SINGLE;
+      if (panelCount === 2) {
+        layout = PanelLayout.TWO_COLUMN;
+      } else if (panelCount >= 3) {
+        layout = PanelLayout.THREE_COLUMN;
+      }
+
+      // Create panel elements
+      const elements: IPanelElement[] = [];
+      
+      // Add characters from dialogue
+      const characterIds = new Set(scriptPanel.dialogue.map(d => d.characterId));
+      let charIndex = 0;
+      characterIds.forEach(charId => {
+        const char = script.characters.find(c => c.id === charId);
+        if (char) {
+          elements.push({
+            type: 'character',
+            id: `char-${index}-${charIndex}`,
+            position: { x: 50 + charIndex * 150, y: 50 },
+            size: { x: 100, y: 100 },
+            content: this.convertScriptCharacter(char),
+            style: {
+              emoji: this.getCharacterEmoji(char.role),
+              color: this.getCharacterColor(char.role),
+            },
+          });
+          charIndex++;
+        }
+      });
+
+      // Add title if present
+      if (scriptPanel.title) {
+        elements.push({
+          type: 'label',
+          id: `title-${index}`,
+          position: { x: 50, y: 20 },
+          size: { x: 200, y: 30 },
+          content: scriptPanel.title,
+          style: {
+            fontSize: '18px',
+            fontWeight: 'bold',
+          },
+        });
+      }
+
+      // Create speech bubbles from dialogue
+      const speechBubbles: ISpeechBubble[] = scriptPanel.dialogue.map((dialogue: IComicScriptDialogue, dIndex: number) => {
+        const bubbleType = this.mapDialogueTypeToBubbleType(dialogue.type);
+        return {
+          id: `bubble-${index}-${dIndex}`,
+          type: bubbleType,
+          text: dialogue.text,
+          position: { x: 180 + dIndex * 10, y: 60 + dIndex * 80 },
+          characterId: dialogue.characterId,
+        };
+      });
+
+      // Add narration if present
+      if (index === script.panels.length - 1 && script.narrative) {
+        speechBubbles.push({
+          id: `narration-${index}`,
+          type: SpeechBubbleType.NARRATION,
+          text: script.narrative,
+          position: { x: 50, y: 180 },
+        });
+      }
+
+      panels.push({
+        id: `panel-${index}`,
+        order: scriptPanel.order ?? index,
+        layout,
+        elements,
+        speechBubbles,
+        background: {
+          color: this.getBackgroundColor(index, 'simple'),
+        },
+        title: scriptPanel.title,
+      });
+    });
+
+    return panels;
+  }
+
+  /**
+   * Converts LLM script characters to comic characters
+   */
+  private convertScriptToCharacters(script: IComicScript): IComicCharacter[] {
+    return script.characters.map(char => this.convertScriptCharacter(char));
+  }
+
+  /**
+   * Converts script character to comic character
+   */
+  private convertScriptCharacter(char: any): IComicCharacter {
+    return {
+      id: char.id,
+      name: char.name,
+      role: char.role,
+      appearance: {
+        color: this.getCharacterColor(char.role),
+        emoji: this.getCharacterEmoji(char.role),
+        style: 'simple',
+      },
+      personality: char.personality || [],
+    };
+  }
+
+  /**
+   * Maps dialogue type to speech bubble type
+   */
+  private mapDialogueTypeToBubbleType(type: string): SpeechBubbleType {
+    switch (type.toLowerCase()) {
+      case 'thought':
+        return SpeechBubbleType.THOUGHT;
+      case 'exclamation':
+        return SpeechBubbleType.EXCLAMATION;
+      case 'narration':
+        return SpeechBubbleType.NARRATION;
+      default:
+        return SpeechBubbleType.SPEECH;
+    }
+  }
+
+  /**
+   * Gets emoji for character role
+   */
+  private getCharacterEmoji(role: string): string {
+    switch (role) {
+      case 'student':
+        return '🧑‍🎓';
+      case 'teacher':
+        return '👨‍🏫';
+      case 'explainer':
+        return '🤖';
+      default:
+        return '👤';
+    }
+  }
+
+  /**
+   * Gets color for character role
+   */
+  private getCharacterColor(role: string): string {
+    switch (role) {
+      case 'student':
+        return '#4A90E2';
+      case 'teacher':
+        return '#F5A623';
+      case 'explainer':
+        return '#7ED321';
+      default:
+        return '#999999';
+    }
   }
 
   /**
@@ -291,10 +534,10 @@ export class ComicGenerator {
   /**
    * Generates a simple comic explanation for quick concepts
    */
-  public generateQuickExplanation(
+  public async generateQuickExplanation(
     concept: string,
     explanation: string
-  ): IComicExplanation {
+  ): Promise<IComicExplanation> {
     return this.generateComicExplanation({
       topic: concept,
       concept,
